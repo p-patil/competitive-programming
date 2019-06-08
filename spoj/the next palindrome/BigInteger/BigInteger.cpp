@@ -415,7 +415,7 @@ string BigInteger::multiply(string n1, string n2)
 		}
 
 		if(carry > 0)
-			temp.insert(0, 1, (carry+'0'));
+			temp.insert(temp.begin(), 1, '0' + carry);
 		
 		temp.append((n1.length()-i-1), '0'); // as like mult by 10, 100, 1000, 10000 and so on
 
