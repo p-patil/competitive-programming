@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <map>
 #include <set>
@@ -228,7 +229,8 @@ std::string BruteForceNextPalindrome(const std::string& number) {
     return big_num.getNumber();
 }
 
-void RandomlyTest(const size_t n, const size_t max_length) {
+void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = false,
+                  bool use_optimized = false) {
     std::random_device dev;
     std::mt19937 rng{dev()};
     std::uniform_int_distribution<int> digit_dist{0, 9};
@@ -236,43 +238,93 @@ void RandomlyTest(const size_t n, const size_t max_length) {
 
     for (size_t i = 0; i < n; ++i) {
         // Generate a random large number (as a digit string).
-        const size_t len = len_dist(rng);
+        size_t len;
+        if (measure_time) len = max_length;
+        else len = len_dist(rng);
+
         std::string number;
         number.reserve(len);
         for (size_t j = 0; j < len; ++j)
             number += '0' + digit_dist(rng);
 
-        NextBiggestPalindrome(number);
+        std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+        if (use_optimized) {
+            if (measure_time) start = std::chrono::high_resolution_clock::now();
+            NextBiggestPalindrome(number);
+            if (measure_time) end = std::chrono::high_resolution_clock::now();
+        } else {
+            std::vector<char> vec_number (number.begin(), number.end());
+            if (measure_time) start = std::chrono::high_resolution_clock::now();
+            NextBiggestPalindrome(vec_number);
+            if (measure_time) end = std::chrono::high_resolution_clock::now();
+            number = std::string(vec_number.begin(), vec_number.end());
+        }
+
         const std::string& palindrome = BruteForceNextPalindrome(number);
 
-        if (number != palindrome)
+        if (measure_time) {
+            const auto& elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            std::cout << "Execution time (length " << len << "): " << elapsed << std::endl;
+        }
+
+        if (number != palindrome) {
             std::cout << "FAILED: " << number << " (expected: " << palindrome << ", got: "
-                      << number << ")" << std::endl;
+                << number << ")" << std::endl;
+            return;
+        }
     }
+
+    std::cout << "Tested " << n << " examples with no failures" << std::endl;
+}
+
+
+// Local stuff (not submitted) for debugging
+
+bool ParseArgsAndTest(int argc, char **argv) {
+    if (argc <= 1) return false;
+
+    bool test = false, measure_time = false, use_optimized = false;
+    size_t n = kDefaultN, max_length = kDefaultMaxLength;
+    // Parse arguments.
+    for (size_t i = 1; i < argc; ++i) {
+        std::string arg_str{argv[i]};
+        if (argc == 2) { // Special case
+            NextBiggestPalindrome(arg_str);
+            std::cout << arg_str << std::endl;
+            return true;
+        } else if (arg_str == "--test") {
+            test = true;
+        } else if (arg_str == "--n") {
+            ++i;
+            n = std::stoi(argv[i]);
+        } else if (arg_str == "--max-length") {
+            ++i;
+            max_length = std::stoi(argv[i]);
+        } else if (arg_str == "--time") {
+            measure_time = true;
+        } else if (arg_str == "--optimized") {
+            use_optimized = true;
+        } else {
+            std::cerr << "Unrecognized argument: " << arg_str << std::endl;
+            exit(1);
+        }
+    }
+
+    if (!test) return false;
+
+    std::cout << "Randomly testing " << n << " iterations, maximum number length is "
+        << max_length << std::endl;
+    RandomlyTest(n, max_length, measure_time, use_optimized);
+
+    return true;
 }
 
 
 // Main
 
 int main(int argc, char **argv) {
-    if (argc > 1) {
-        std::string first_arg{argv[1]};
-        if (first_arg == "--test") {
-            size_t n = kDefaultN;
-            size_t max_length = kDefaultMaxLength;
-            if (argc > 2) n = std::stoi(argv[2]);
-            if (argc > 3) max_length = std::stoi(argv[3]);
-
-            std::cout << "Randomly testing " << n << " iterations, maximum number length is "
-                << max_length << std::endl;
-            RandomlyTest(n, max_length);
-        } else {
-            NextBiggestPalindrome(first_arg);
-            std::cout << first_arg << std::endl;
-        }
-
-        return 0;
-    }
+    if (ParseArgsAndTest(argc, argv)) return 0;
 
     std::string t;
     std::getline(std::cin, t);
