@@ -82,6 +82,32 @@ void NextBiggestPalindrome(std::vector<char>& K, bool& all_nines) {
         }
  
         return;
+    } else if (K.size() == 3) { // Base case: For odd number of digits (3 digits)
+        int left = CharToDigit(K.front()), middle = CharToDigit(K[1]),
+            right = CharToDigit(K.back());
+
+        if (right < left) {
+            K.back() = K.front();
+            all_nines = false;
+            return;
+        }
+
+        // We need to increment the middle value.
+        if (middle != 9) {
+            K.back() = K.front();
+            ++K[1];
+            all_nines = false;
+        } else {
+            if (left == 9 && right == 9) {
+                all_nines = true;
+            } else {
+                ++K[0]; // left is guaranteed not to be 9
+                K[1] = '0';
+                K.back() = K.front();
+            }
+        }
+
+        return;
     }
 
     std::vector<char> sub_K = std::vector<char>(K.begin() + 1, K.end() - 1);
