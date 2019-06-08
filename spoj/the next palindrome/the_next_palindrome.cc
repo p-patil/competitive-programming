@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <map>
 #include <set>
@@ -15,77 +16,118 @@ constexpr size_t max_digits = 1000000;
  * 52 -> 55
  * 25 -> 33
  * 33 -> 44
- * 95 -> 
+ * 95 -> 99
  * 2532 -> 2552
  * 2582 -> 2662
  * 29522892 -> 29533592
  * 1295228923 -> 1295335921
  * 3995 -> 4004
+ * 3999995 -> 4000004
+ * 9999 -> 10001
+ * 195 -> 202
+ * 995 -> 999
+ * 973 -> 979
+ * 978 -> 979
+ * 979 -> 989
+ * 9779 -> 9889
  */
+
+/*
+ * 29622892
+ * 2 962289 2
+ * Recurse on 962289:
+ *     9 6228 9
+ *     Recurse on 6228:
+ *         
+ */
+
+
+// Convenience functions
 
 inline int CharToDigit(const char& c) {
     return int(c - '0');
 }
 
 
-void NextBiggestPalindrome(std::vector<char>& K, size_t start, size_t end) {
-    if (start == end) { // Single-digit case
-        K[start] =  
-    } else if (end - start == 1) { // Double-digit case
-        int left = CharToDigit(K[start]), right = CharToDigit(K[end]);
-        if (right < left) {
-            K[end] = K[start];
-            return;
-        } else if (left == right && left == 9) { // Handle the special case of 99 separately
-            //TODO(piyush)
-        } else {
-            K[start]++;
-            K[end] = K[start];
+// DP solution
+
+void NextBiggestPalindrome(std::vector<char>& K, bool& all_nines) {
+    if (K.size() == 1) { // Base case: single-digit
+        int digit = CharToDigit(K.front());
+        if (digit == 9) {
+            all_nines = true;
         }
+        else {
+            ++K.front();
+            all_nines = false;
+        }
+
+        return;
+    } else if (K.size() == 2) { // Base case: double-digit
+        int left = CharToDigit(K.front()), right = CharToDigit(K[1]);
+        if (left == 9 && right == 9) {
+            all_nines = true;
+        } else if (right < left) {
+            K.back() = K.front();
+            all_nines = false;
+        } else {
+            assert(left != 9);
+            ++K.front();
+            K.back() = K.front();
+            all_nines = false;
+        }
+ 
+        return;
     }
 
-    //TODO(piyush)
+    int left = CharToDigit(K.front()), right = CharToDigit(K.back());
+    if (right < left) {
+        all_nines = false;
+        K.back() = K.front();
+        return;
+    }
+
+    std::vector<char> sub_K = std::vector<char>(K.begin() + 1, K.end() - 1);
+    bool sub_all_nines;
+    NextBiggestPalindrome(sub_K, sub_all_nines);
+    std::copy(sub_K.begin(), sub_K.end(), K.begin() + 1); // Copy sub_K back into K
+
+    if (sub_all_nines) {
+        int left = CharToDigit(K.front()), right = CharToDigit(K.back());
+        if (left == 9 && right == 9) {
+            // Return 10...01 where number of 0's = K.size().
+            std::fill(K.begin(), K.end(), '0');
+            K.front() = '1';
+            K.push_back('1');
+
+            all_nines = true;
+            return;
+        }
+
+        // Return F0...0F where F = first digit of K, number of 0's = K.size() - 2.
+        std::fill(K.begin() + 1, K.end() - 1, '0');
+        K.back() = K.front();
+        all_nines = false;
+        return;
+    } else {
+        K.back() = K.front();
+        all_nines = false;
+    }
+}
+
+void NextBiggestPalindrome(std::vector<char>& K) {
+    bool all_nines;
+    NextBiggestPalindrome(K, all_nines);
 }
 
 int main(int argc, char **argv) {
-    int t;
-    std::cin >> t;
+    std::string t;
+    std::getline(std::cin, t);
 
     for (std::string K; std::getline(std::cin, K);) {
-        std::vector<char> bigger_palindrome;
-        bigger_palindrome.reserve(K.size());
-
-        size_t start;
-        if (K.size() % 2 == 0) start = K.size() / 2;
-        else start = K.size() % 2 + 1;
-
-        std::copy(K.begin(), K.begin() + (start - 1), bigger_palindrome.begin());
-
-        // Find leftmost digit in the bottom half of K that differs from its
-        // mirror counterpart.
-        int index = -1;
-        for (size_t i = start; i >= 0; --i) {
-            if (K.at(i) != K.at(K.size() - 1 - i)) {
-                index = -1;
-                break;
-            }
-        }
-
-        if (index != -1) {
-            int digit = CharToDigit(K.at(index)),
-                mirror = CharToDigit(K.at(K.size() - 1 - index));
-
-            if (digit < mirror) {
-                for (size_t i = 0; i < start; ++i)
-                    bigger_palindrome[bigger_palindrome.size() - 1 - i] = bigger_palindrome[i];
-                std::cout << std::string(bigger_palindrome.begin(), bigger_palindrome.end());
-                continue;
-            }
-
-
-        } else { // K is already a palindrome
-
-        }
+        std::vector<char> vec_K (K.begin(), K.end());
+        NextBiggestPalindrome(vec_K);
+        std::cout << std::string(vec_K.begin(), vec_K.end()) << std::endl;
     }
 
     return 0;
