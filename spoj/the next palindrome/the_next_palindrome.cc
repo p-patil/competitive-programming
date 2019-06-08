@@ -107,6 +107,86 @@ void NextBiggestPalindrome(std::vector<char>& K, bool& all_nines) {
     }
 }
 
+// Optimized version (no copies).
+void NextBiggestPalindrome(std::string& K, const size_t left, const size_t right,
+                           bool& all_nines) {
+    if (left == right) { // Base case: single-digit
+        int digit = CharToDigit(K[left]);
+        if (digit == 9) {
+            all_nines = true;
+        } else {
+            ++K[left];
+            all_nines = false;
+        }
+
+        return;
+    } else if (left + 1 == right) { // Base case: double-digit
+        int l_digit = CharToDigit(K[left]), r_digit = CharToDigit(K[right]);
+        if (l_digit == 9 && r_digit == 9) {
+            all_nines = true;
+        } else if (r_digit < l_digit) {
+            K[right] = K[left];
+            all_nines = false;
+        } else {
+            assert(l_digit != 9);
+            ++K[left];
+            K[right] = K[left];
+            all_nines = false;
+        }
+
+        return;
+    } else if (left + 2 == right) { // Base case: For odd number of digits (3 digits)
+        int l_digit = CharToDigit(K[left]), middle = CharToDigit(K[left + 1]),
+            r_digit = CharToDigit(K[right]);
+
+        if (r_digit < l_digit) {
+            K[right] = K[left];
+            all_nines = false;
+            return;
+        }
+
+        // We need to increment the middle value.
+        if (middle != 9) {
+            K[right] = K[left];
+            ++K[left + 1];
+            all_nines = false;
+        } else {
+            if (l_digit == 9 && r_digit == 9) {
+                all_nines = true;
+            } else {
+                ++K[left];
+                ++K[left + 1] = '0';
+                K[right] = K[left];
+            }
+        }
+
+        return;
+    }
+
+    bool sub_all_nines;
+    NextBiggestPalindrome(K, left + 1, right - 1, sub_all_nines);
+
+    if (sub_all_nines) {
+        int l_digit = CharToDigit(K[left]), r_digit = CharToDigit(K[right]);
+        if (l_digit == 9 && r_digit == 9) {
+            all_nines = true;
+        } else if (r_digit < l_digit) {
+            K[right] = K[left];
+            all_nines = false;
+        } else {
+            // Return F0...0F where F = digit after the first digit of K, number of 0's =
+            // K.size() - 2.
+            std::fill(K.begin() + left + 1, K.begin() + right - 1, '0');
+            ++K[left];
+            K[right] = K[left];
+            all_nines = false;
+        }
+    } else {
+        K[right] = K[left];
+        all_nines = false;
+    }
+}
+
 void NextBiggestPalindrome(std::vector<char>& K) {
     bool all_nines;
     NextBiggestPalindrome(K, all_nines);
@@ -116,6 +196,19 @@ void NextBiggestPalindrome(std::vector<char>& K) {
         std::fill(K.begin(), K.end(), '0');
         K.front() = '1';
         K.push_back('1');
+    }
+}
+
+// Optimized version (no copies).
+void NextBiggestPalindrome(std::string& K) {
+    bool all_nines;
+    NextBiggestPalindrome(K, 0, K.size() - 1, all_nines);
+
+    if (all_nines) {
+        // Return 10...01 where number of 0's = K.size().
+        std::fill(K.begin(), K.end(), '0');
+        K.front() = '1';
+        K += '1';
     }
 }
 
@@ -139,7 +232,7 @@ void RandomlyTest(const size_t n, const size_t max_length) {
     std::random_device dev;
     std::mt19937 rng{dev()};
     std::uniform_int_distribution<int> digit_dist{0, 9};
-    std::uniform_int_distribution<int> len_dist{1, max_length};
+    std::uniform_int_distribution<int> len_dist(1, max_length);
 
     for (size_t i = 0; i < n; ++i) {
         // Generate a random large number (as a digit string).
@@ -149,15 +242,12 @@ void RandomlyTest(const size_t n, const size_t max_length) {
         for (size_t j = 0; j < len; ++j)
             number += '0' + digit_dist(rng);
 
-        std::vector<char> vec_number(number.begin(), number.end());
-        NextBiggestPalindrome(vec_number);
-
-        const std::string guess{vec_number.begin(), vec_number.end()};
+        NextBiggestPalindrome(number);
         const std::string& palindrome = BruteForceNextPalindrome(number);
 
-        if (guess != palindrome)
+        if (number != palindrome)
             std::cout << "FAILED: " << number << " (expected: " << palindrome << ", got: "
-                      << guess << ")" << std::endl;
+                      << number << ")" << std::endl;
     }
 }
 
@@ -177,9 +267,8 @@ int main(int argc, char **argv) {
                 << max_length << std::endl;
             RandomlyTest(n, max_length);
         } else {
-            std::vector<char> vec (first_arg.begin(), first_arg.end());
-            NextBiggestPalindrome(vec);
-            std::cout << std::string(vec.begin(), vec.end()) << std::endl;
+            NextBiggestPalindrome(first_arg);
+            std::cout << first_arg << std::endl;
         }
 
         return 0;
@@ -189,9 +278,8 @@ int main(int argc, char **argv) {
     std::getline(std::cin, t);
 
     for (std::string K; std::getline(std::cin, K);) {
-        std::vector<char> vec_K (K.begin(), K.end());
-        NextBiggestPalindrome(vec_K);
-        std::cout << std::string(vec_K.begin(), vec_K.end()) << std::endl;
+        NextBiggestPalindrome(K);
+        std::cout << K << std::endl;
     }
 
     return 0;
