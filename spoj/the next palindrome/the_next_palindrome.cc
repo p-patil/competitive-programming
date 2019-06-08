@@ -51,52 +51,53 @@ inline int CharToDigit(const char& c) {
 
 // DP solution
 
-void NextBiggestPalindrome(std::vector<char>& K, size_t left, size_t right, bool& all_nines) {
-    if (left == right) { // Base case: single-digit
-        int digit = CharToDigit(;
+void NextBiggestPalindrome(std::vector<char>& K, bool& all_nines) {
+    if (K.size() == 1) { // Base case: single-digit
+        int digit = CharToDigit(K.front());
         if (digit == 9) {
             all_nines = true;
         }
         else {
-            ++left;
+            ++K.front();
             all_nines = false;
         }
 
         return;
-    } else if (left + 1 == right) { // Base case: double-digit
-        int l_digit = CharToDigit(*left), r_digit = CharToDigit(*right);
-        if (l_digit == 9 && r_digit == 9) {
+    } else if (K.size() == 2) { // Base case: double-digit
+        int left = CharToDigit(K.front()), right = CharToDigit(K[1]);
+        if (left == 9 && right == 9) {
             all_nines = true;
-        } else if (r_digit < l_digit) {
-            *right = *left;
+        } else if (right < left) {
+            K.back() = K.front();
             all_nines = false;
         } else {
-            assert(l_digit!= 9);
-            ++left;
-            *right = *left;
+            assert(left != 9);
+            ++K.front();
+            K.back() = K.front();
             all_nines = false;
         }
  
         return;
     }
 
-    int l_digit = CharToDigit(*left), r_digit = CharToDigit(*right);
-    if (r_digit < l_digit) {
+    int left = CharToDigit(K.front()), right = CharToDigit(K.back());
+    if (right < left) {
         all_nines = false;
-        *right = *left;
+        K.back() = K.front();
         return;
     }
 
+    std::vector<char> sub_K = std::vector<char>(K.begin() + 1, K.end() - 1);
     bool sub_all_nines;
-    NextBiggestPalindrome(left + 1, right - 1, sub_all_nines);
+    NextBiggestPalindrome(sub_K, sub_all_nines);
+    std::copy(sub_K.begin(), sub_K.end(), K.begin() + 1); // Copy sub_K back into K
 
     if (sub_all_nines) {
-        // K was modified increased in size by 1, so set right := right + 1.
-        int l_digit = CharToDigit(left), r_digit = CharToDigit(right + 1);
-        if (l_digit == 9 && r_digit == 9) {
+        int left = CharToDigit(K.front()), right = CharToDigit(K.back());
+        if (left == 9 && right == 9) {
             // Return 10...01 where number of 0's = K.size().
             std::fill(K.begin(), K.end(), '0');
-            K[left] = '1';
+            K.front() = '1';
             K.push_back('1');
 
             all_nines = true;
@@ -104,12 +105,12 @@ void NextBiggestPalindrome(std::vector<char>& K, size_t left, size_t right, bool
         }
 
         // Return F0...0F where F = first digit of K, number of 0's = K.size() - 2.
-        std::fill(K.begin() + left + 1, K.begin() + right - 1, '0');
-        K[right] = K[left];
+        std::fill(K.begin() + 1, K.end() - 1, '0');
+        K.back() = K.front();
         all_nines = false;
         return;
     } else {
-        K[right] = K[left];
+        K.back() = K.front();
         all_nines = false;
     }
 }
