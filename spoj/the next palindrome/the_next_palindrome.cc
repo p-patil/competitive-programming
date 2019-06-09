@@ -496,7 +496,7 @@ int main(int argc, char **argv) {
 
     for (std::string K; std::getline(std::cin, K);) {
         NextBiggestPalindromeIterative(K);
-        std::cout << " " << K << std::endl;
+        std::cout << K << std::endl;
     }
 
     return 0;
