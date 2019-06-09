@@ -42,6 +42,8 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
                   bool use_optimized = false, bool use_iterative = false, bool print_num = false) {
     assert(!(use_optimized && use_iterative));
 
+    size_t last_line_length = 0; // Used for printing the progress bar
+
     std::random_device dev;
     std::mt19937 rng{dev()};
     std::uniform_int_distribution<int> digit_dist{0, 9};
@@ -61,10 +63,15 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
 
         // Unless we're also printing timing information, add a progress bar.
         if (!measure_time) {
-            std::cout << "Trial " << i + 1 << " of " << n;
-            if (print_num) std::cout << " (number: " << number << ", length: " << len << ")";
-            else std::cout << " (number length: " << len << ")";
-            std::cout << '\r' << std::flush;
+            std::string line = "Trial " + std::to_string(i + 1) + " of " + std::to_string(n);
+            if (print_num) line += " (number: " + number + ", length: " + std::to_string(len) + ")";
+            else line += + " (number length: " + std::to_string(len) + ")";
+
+            int diff = last_line_length - line.size();
+            last_line_length = line.size();
+            if (diff > 0) line += std::string(diff, ' ');
+
+            std::cout << line << '\r' << std::flush;
         } else if (print_num) {
             std::cout << "number: " << number << ", length: " << len << std::endl;
         }
