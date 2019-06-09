@@ -343,6 +343,78 @@ void NextBiggestPalindrome(std::string& K) {
     }
 }
 
+// Iterative solution
+
+void NextBiggestPalindromeIterative(std::string& K) {
+    assert(!K.empty());
+
+    if (K.size() % 2 == 0) return; // TODO(piyush) handle case when K is odd
+
+    int left = K.size() / 2 - 1, right = K.size() / 2;
+
+    // Find right most number in 2nd half that differs from its mirror counterpart.
+    while (K[left] == K[right] && left >= 0 && right < K.size()) {
+        --left;
+        ++right;
+    }
+
+    // If K is already a palindrome, just increment the center 2 digits.
+    if (left < 0 || right >= K.size()) {
+        assert(left < 0 && right >= K.size());
+        left = K.size() / 2 - 1;
+        right = K.size() / 2;
+
+        // Incrementing 9's requires a carry, so find the digits bounding any middle 9's.
+        while (K[left] == '9' && left >= 0 && right < K.size()) {
+            assert(K[left] == K[right]);
+            --left;
+            ++right;
+        }
+
+        // If the string is an all 9's palindrome, return 10...01 where there are `K.size()` zeros.
+        if (left < 0 || right >= K.size()) {
+            assert(left < 0 && right >= K.size());
+            K[0] = '1';
+            std::fill(K.begin() + 1, K.end(), '0');
+            K += '1';
+        // Otherwise, incrememnt the digits immediately surrounding the 9's.
+        } else {
+            assert(K[left] == K[right]);
+            std::fill(K.begin() + left + 1, K.begin() + right, '0'); // Not `right - 1` because the
+                                                                     // end bound is exclusive
+            ++K[left];
+            ++K[right];
+        }
+    // Otherwise, we want to copy everything from 0 to `left` in reverse into `right` to
+    // `K.size() - 1`.
+    } else {
+        // If we get lucky, we can directly increase the right value to match the left's, and then
+        // are free to copy the remaining portions of each half, no carry required.
+        if (K[right] < K[left]) {
+            while (left >= 0 && right < K.size()) {
+                K[right] = K[left];
+                --left;
+                ++right;
+            }
+
+            assert(left < 0 && right >= K.size());
+        // Otherwise, making the right value match the left value (after which we're again free to
+        // directly reflect the remaining portions of each half) requires a carry. So, we increment
+        // the left digit, set everything between `left` and `right` to 0, and reflect the remaining
+        // portions. Note that the left digit can't be a 9, because the left and right digits differ
+        // and the right digit is bigger.
+        } else {
+            ++K[left];
+            std::fill(K.begin() + left + 1, K.begin() + right, '0');
+            while (left >= 0 && right < K.size()) {
+                K[right] = K[left];
+                --left;
+                ++right;
+            }
+        }
+    }
+}
+
 
 // Main
 
