@@ -230,23 +230,38 @@ std::string BruteForceNextPalindrome(const std::string& number) {
 }
 
 void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = false,
-                  bool use_optimized = false) {
+                  bool use_optimized = false, bool print_num = false) {
     std::random_device dev;
     std::mt19937 rng{dev()};
     std::uniform_int_distribution<int> digit_dist{0, 9};
     std::uniform_int_distribution<int> len_dist(1, max_length);
 
     for (size_t i = 0; i < n; ++i) {
-        // Generate a random large number (as a digit string).
+        // Generate a random number length.
         size_t len;
         if (measure_time) len = max_length;
         else len = len_dist(rng);
 
+        // Generate a random number (as a digit string) of length `len`.
         std::string number;
         number.reserve(len);
         for (size_t j = 0; j < len; ++j)
             number += '0' + digit_dist(rng);
 
+        // Unless we're also printing timing information, add a progress bar.
+        if (!measure_time) {
+            std::cout << "Trial " << i + 1 << " of " << n;
+            if (print_num) std::cout << " (number: " << number << ", length: " << len << ")";
+            else std::cout << " (number length: " << len << ")";
+            std::cout << '\r' << std::flush;
+        } else if (print_num) {
+            std::cout << "number: " << number << ", length: " << len << std::endl;
+        }
+
+        // Brute-force the expected answer.
+        const std::string& palindrome = BruteForceNextPalindrome(number);
+
+        // Compute our answer (stored back in `number`).
         std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
         if (use_optimized) {
             if (measure_time) start = std::chrono::high_resolution_clock::now();
@@ -259,8 +274,6 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
             if (measure_time) end = std::chrono::high_resolution_clock::now();
             number = std::string(vec_number.begin(), vec_number.end());
         }
-
-        const std::string& palindrome = BruteForceNextPalindrome(number);
 
         if (measure_time) {
             const auto& elapsed =
@@ -275,6 +288,9 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
         }
     }
 
+    if (!measure_time) // Clean up progress bar
+        std::cout << std::endl;
+
     std::cout << "Tested " << n << " examples with no failures" << std::endl;
 }
 
@@ -284,7 +300,7 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
 bool ParseArgsAndTest(int argc, char **argv) {
     if (argc <= 1) return false;
 
-    bool test = false, measure_time = false, use_optimized = false;
+    bool test = false, measure_time = false, use_optimized = false, print_num = false;
     size_t n = kDefaultN, max_length = kDefaultMaxLength;
     // Parse arguments.
     for (size_t i = 1; i < argc; ++i) {
@@ -305,6 +321,8 @@ bool ParseArgsAndTest(int argc, char **argv) {
             measure_time = true;
         } else if (arg_str == "--optimized") {
             use_optimized = true;
+        } else if (arg_str == "--print-num") {
+            print_num = true;
         } else {
             std::cerr << "Unrecognized argument: " << arg_str << std::endl;
             exit(1);
@@ -315,7 +333,7 @@ bool ParseArgsAndTest(int argc, char **argv) {
 
     std::cout << "Randomly testing " << n << " iterations, maximum number length is "
         << max_length << std::endl;
-    RandomlyTest(n, max_length, measure_time, use_optimized);
+    RandomlyTest(n, max_length, measure_time, use_optimized, print_num);
 
     return true;
 }
