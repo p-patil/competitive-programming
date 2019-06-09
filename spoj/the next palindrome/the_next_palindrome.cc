@@ -59,9 +59,6 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
         for (size_t j = 0; j < len; ++j)
             number += '0' + digit_dist(rng);
 
-        //TODO(piyush) remove
-        if (number.size() % 2 != 0) continue;
-
         // Unless we're also printing timing information, add a progress bar.
         if (!measure_time) {
             std::cout << "Trial " << i + 1 << " of " << n;
@@ -368,10 +365,22 @@ void NextBiggestPalindrome(std::string& K) {
 
 void NextBiggestPalindromeIterative(std::string& K) {
     assert(!K.empty());
+    if (K.size() == 1) { // Special case, handle differently because below we'd have `left == -1`
+        if (K[0] != '9') ++K[0];
+        else K = "11";
+        return;
+    }
 
-    if (K.size() % 2 != 0) return; // TODO(piyush) handle case when K is odd
+    bool odd = K.size() % 2 == 1;
+    int left, right, middle;
 
-    int left = K.size() / 2 - 1, right = K.size() / 2;
+    left = K.size() / 2 - 1;
+    if (odd) {
+        middle = left + 1; // Only used if `odd`
+        right = left + 2;
+    } else {
+        right = left + 1;
+    }
 
     // Find right most number in 2nd half that differs from its mirror counterpart.
     while (K[left] == K[right] && left >= 0 && right < K.size()) {
@@ -379,11 +388,19 @@ void NextBiggestPalindromeIterative(std::string& K) {
         ++right;
     }
 
-    // If K is already a palindrome, just increment the center 2 digits.
+    // If K is already a palindrome, increment the center digit (if `odd`) or 2 digits (if even).
     if (left < 0 || right >= K.size()) {
         assert(left < 0 && right >= K.size());
         left = K.size() / 2 - 1;
-        right = K.size() / 2;
+        if (odd) right = left + 2;
+        else right = left + 1;
+
+        // If K has an odd length, we can just increment the middle digit. But if this digit is a 9,
+        // we need to carry.
+        if (odd && K[middle] != '9') {
+            ++K[middle];
+            return;
+        }
 
         // Incrementing 9's requires a carry, so find the digits bounding any middle 9's.
         while (K[left] == '9' && left >= 0 && right < K.size()) {
@@ -398,7 +415,7 @@ void NextBiggestPalindromeIterative(std::string& K) {
             K[0] = '1';
             std::fill(K.begin() + 1, K.end(), '0');
             K += '1';
-        // Otherwise, incrememnt the digits immediately surrounding the 9's.
+        // Otherwise, increment the digits immediately surrounding the 9's.
         } else {
             assert(K[left] == K[right]);
             std::fill(K.begin() + left + 1, K.begin() + right, '0'); // Not `right - 1` because the
@@ -406,7 +423,7 @@ void NextBiggestPalindromeIterative(std::string& K) {
             ++K[left];
             ++K[right];
         }
-    // Otherwise, everything from `left + 1` to `right - 1` if a palindrome, so we want to copy
+    // Otherwise, everything from `left + 1` to `right - 1` is a palindrome, so we want to copy
     // everything from 0 to `left` in reverse into `right` to `K.size() - 1`.
     } else {
         // If we get lucky, we can directly increase the right value to match the left's, and then
@@ -423,22 +440,34 @@ void NextBiggestPalindromeIterative(std::string& K) {
         // directly reflect the remaining portions of each half) requires a carry. But all the
         // digits between `left` and `right` are already a palindrome, so incrementing the digit at
         // `right - 1` via the carry will disrupt the internal palindrome, requiring another carry.
-        // These carries "propagate" until we get to the middle 2 digits, which we can simply
-        // increment.
+        // These carries "propagate" until we get to the middle digit (if `odd`) or 2 digits
+        // (otherwise), which we can simply increment.
         } else {
-            int center_left = K.size() / 2 - 1, center_right = K.size() / 2;
-            while (K[center_left] == '9') { // Handle special case where we have middle 9's
-                assert(K[center_right] == '9');
-                K[center_left] = K[center_right] = '0';
+            int center_left = K.size() / 2 - 1, center_right;
+            if (odd) center_right = center_left + 2;
+            else center_right = center_left + 1;
 
-                --center_left;
-                ++center_right;
+            // If K has an odd length, we can just increment the middle digit.
+            if (odd && K[middle] != '9') {
+                ++K[middle];
+            // But if this digit is a 9, we need to carry. If K has even length, there's no middle
+            // digit at all so we need to carry anyways.
+            } else {
+                if (odd && K[middle] == '9') K[middle] = '0';
+
+                while (K[center_left] == '9') { // Handle special case where we have middle 9's
+                    assert(K[center_right] == '9');
+                    K[center_left] = K[center_right] = '0';
+
+                    --center_left;
+                    ++center_right;
+                }
+
+                // Note that in the worse case, the above loop stops when `center_left == left`,
+                // since the `K[left]` can't be a 9 (since `K[right] > K[left]`).
+                ++K[center_left];
+                K[center_right] = K[center_left];
             }
-
-            // Note that in the worse case, the above loop stops when `center_left == left`, since
-            // the `K[left]` can't be a 9 (since `K[right] > K[left]`).
-            ++K[center_left];
-            K[center_right] = K[center_left];
 
             while (left >= 0 && right < K.size()) {
                 K[right] = K[left];
@@ -459,13 +488,6 @@ int main(int argc, char **argv) {
     std::getline(std::cin, t);
 
     for (std::string K; std::getline(std::cin, K);) {
-        //TODO(piyush) remove
-        if (K.size() % 2 != 0) {
-            std::cout << "skipped" << std::endl;
-            continue;
-        }
-
-        std::cout << K;
         NextBiggestPalindromeIterative(K);
         std::cout << " " << K << std::endl;
     }
