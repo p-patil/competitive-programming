@@ -17,6 +17,7 @@ constexpr size_t kDefaultN = 1000;
 
 void NextBiggestPalindrome(std::vector<char>& K);
 void NextBiggestPalindrome(std::string& K);
+void NextBiggestPalindromeIterative(std::string& K);
 
 // This code will only be run locally, for debugging purposes. To use it, compile with "-D LOCAL".
 #ifdef LOCAL
@@ -38,7 +39,9 @@ std::string BruteForceNextPalindrome(const std::string& number) {
 
 // Randomized testing.
 void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = false,
-                  bool use_optimized = false, bool print_num = false) {
+                  bool use_optimized = false, bool use_iterative = false, bool print_num = false) {
+    assert(!(use_optimized && use_iterative));
+
     std::random_device dev;
     std::mt19937 rng{dev()};
     std::uniform_int_distribution<int> digit_dist{0, 9};
@@ -56,6 +59,9 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
         for (size_t j = 0; j < len; ++j)
             number += '0' + digit_dist(rng);
 
+        //TODO(piyush) remove
+        if (number.size() % 2 != 0) continue;
+
         // Unless we're also printing timing information, add a progress bar.
         if (!measure_time) {
             std::cout << "Trial " << i + 1 << " of " << n;
@@ -72,6 +78,10 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
         if (use_optimized) {
             if (measure_time) start = std::chrono::high_resolution_clock::now();
             NextBiggestPalindrome(answer);
+            if (measure_time) end = std::chrono::high_resolution_clock::now();
+        } else if (use_iterative) {
+            if (measure_time) start = std::chrono::high_resolution_clock::now();
+            NextBiggestPalindromeIterative(answer);
             if (measure_time) end = std::chrono::high_resolution_clock::now();
         } else {
             std::vector<char> vec_number (answer.begin(), answer.end());
@@ -105,14 +115,23 @@ void RandomlyTest(const size_t n, const size_t max_length, bool measure_time = f
 bool ParseArgsAndTest(int argc, char **argv) {
     if (argc <= 1) return false;
 
-    bool test = false, measure_time = false, use_optimized = false, print_num = false;
+    bool test = false, measure_time = false, use_optimized = false, use_iterative = false,
+         print_num = false;
     size_t n = kDefaultN, max_length = kDefaultMaxLength;
     // Parse arguments.
     for (size_t i = 1; i < argc; ++i) {
         std::string arg_str{argv[i]};
         if (argc == 2) { // Special case
-            NextBiggestPalindrome(arg_str);
+            //NextBiggestPalindrome(arg_str);
+            //std::cout << arg_str << std::endl;
+
+            //std::vector<char> v{arg_str.begin(), arg_str.end()};
+            //NextBiggestPalindrome(v);
+            //std::cout << std::string(v.begin(), v.end()) << std::endl;
+
+            NextBiggestPalindromeIterative(arg_str);
             std::cout << arg_str << std::endl;
+
             return true;
         } else if (arg_str == "--test") {
             test = true;
@@ -126,6 +145,8 @@ bool ParseArgsAndTest(int argc, char **argv) {
             measure_time = true;
         } else if (arg_str == "--optimized") {
             use_optimized = true;
+        } else if (arg_str == "--iterative") {
+            use_iterative = true;
         } else if (arg_str == "--print-num") {
             print_num = true;
         } else {
@@ -138,7 +159,7 @@ bool ParseArgsAndTest(int argc, char **argv) {
 
     std::cout << "Randomly testing " << n << " iterations, maximum number length is "
         << max_length << std::endl;
-    RandomlyTest(n, max_length, measure_time, use_optimized, print_num);
+    RandomlyTest(n, max_length, measure_time, use_optimized, use_iterative, print_num);
 
     return true;
 }
@@ -348,7 +369,7 @@ void NextBiggestPalindrome(std::string& K) {
 void NextBiggestPalindromeIterative(std::string& K) {
     assert(!K.empty());
 
-    if (K.size() % 2 == 0) return; // TODO(piyush) handle case when K is odd
+    if (K.size() % 2 != 0) return; // TODO(piyush) handle case when K is odd
 
     int left = K.size() / 2 - 1, right = K.size() / 2;
 
@@ -385,8 +406,8 @@ void NextBiggestPalindromeIterative(std::string& K) {
             ++K[left];
             ++K[right];
         }
-    // Otherwise, we want to copy everything from 0 to `left` in reverse into `right` to
-    // `K.size() - 1`.
+    // Otherwise, everything from `left + 1` to `right - 1` if a palindrome, so we want to copy
+    // everything from 0 to `left` in reverse into `right` to `K.size() - 1`.
     } else {
         // If we get lucky, we can directly increase the right value to match the left's, and then
         // are free to copy the remaining portions of each half, no carry required.
@@ -399,13 +420,26 @@ void NextBiggestPalindromeIterative(std::string& K) {
 
             assert(left < 0 && right >= K.size());
         // Otherwise, making the right value match the left value (after which we're again free to
-        // directly reflect the remaining portions of each half) requires a carry. So, we increment
-        // the left digit, set everything between `left` and `right` to 0, and reflect the remaining
-        // portions. Note that the left digit can't be a 9, because the left and right digits differ
-        // and the right digit is bigger.
+        // directly reflect the remaining portions of each half) requires a carry. But all the
+        // digits between `left` and `right` are already a palindrome, so incrementing the digit at
+        // `right - 1` via the carry will disrupt the internal palindrome, requiring another carry.
+        // These carries "propagate" until we get to the middle 2 digits, which we can simply
+        // increment.
         } else {
-            ++K[left];
-            std::fill(K.begin() + left + 1, K.begin() + right, '0');
+            int center_left = K.size() / 2 - 1, center_right = K.size() / 2;
+            while (K[center_left] == '9') { // Handle special case where we have middle 9's
+                assert(K[center_right] == '9');
+                K[center_left] = K[center_right] = '0';
+
+                --center_left;
+                ++center_right;
+            }
+
+            // Note that in the worse case, the above loop stops when `center_left == left`, since
+            // the `K[left]` can't be a 9 (since `K[right] > K[left]`).
+            ++K[center_left];
+            K[center_right] = K[center_left];
+
             while (left >= 0 && right < K.size()) {
                 K[right] = K[left];
                 --left;
@@ -425,8 +459,15 @@ int main(int argc, char **argv) {
     std::getline(std::cin, t);
 
     for (std::string K; std::getline(std::cin, K);) {
-        NextBiggestPalindrome(K);
-        std::cout << K << std::endl;
+        //TODO(piyush) remove
+        if (K.size() % 2 != 0) {
+            std::cout << "skipped" << std::endl;
+            continue;
+        }
+
+        std::cout << K;
+        NextBiggestPalindromeIterative(K);
+        std::cout << " " << K << std::endl;
     }
 
     return 0;
